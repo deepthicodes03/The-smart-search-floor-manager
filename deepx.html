@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart-Search Floor Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#12141c; --surface:#1b1e2a; --surface2:#232739; --line:#323853;
+  --text:#eef0f8; --text-dim:#a3a8c2;
+  --amber:#e8a33d; --green:#49c08a; --red:#e5555f; --blue:#6f8cff;
+  --radius:10px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f4f4f8; --surface:#ffffff; --surface2:#eceef6; --line:#dcdfec;
+    --text:#171a24; --text-dim:#5c6178;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12141c; --surface:#1b1e2a; --surface2:#232739; --line:#323853;
+  --text:#eef0f8; --text-dim:#a3a8c2;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{margin:0; background:var(--bg); color:var(--text); font-family:'Inter',-apple-system,sans-serif;}
+.wrap{max-width:1100px; margin:0 auto; padding:28px 20px 60px;}
+.eyebrow{font-family:'Space Grotesk',sans-serif; font-weight:600; color:var(--amber); font-size:13px;}
+h1{font-family:'Space Grotesk',sans-serif; font-size:clamp(26px,5vw,36px); margin:4px 0 6px; font-weight:700;}
+.sub{color:var(--text-dim); font-size:14.5px; max-width:640px; line-height:1.5;}
+
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-top:20px;}
+.panel h2{font-family:'Space Grotesk',sans-serif; font-size:16px; margin:0 0 4px; font-weight:600;}
+.panel .hint{color:var(--text-dim); font-size:12.5px; margin-bottom:14px;}
+
+label{display:block; font-size:12.5px; color:var(--text-dim); margin:0 0 5px;}
+select, input[type=date], input[type=time], input[type=text], input[type=number]{
+  width:100%; background:var(--surface2); border:1px solid var(--line); color:var(--text);
+  border-radius:7px; padding:9px 10px; font-size:14px; font-family:inherit;
+}
+input:focus, select:focus{outline:2px solid var(--blue); outline-offset:1px;}
+button{
+  font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13.5px;
+  border-radius:7px; border:1px solid var(--line); cursor:pointer; padding:9px 12px;
+  background:var(--surface2); color:var(--text);
+}
+button:hover{border-color:var(--blue);}
+.btn-primary{background:var(--amber); color:#241705; border:none;}
+.btn-danger{color:var(--red); background:transparent;}
+
+/* search bar */
+.search-row{display:flex; gap:10px;}
+.search-row input{flex:1; font-size:15px; padding:12px 14px;}
+.search-row button{padding:0 20px;}
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;}
+.chip{font-size:12px; padding:5px 10px; border-radius:20px; background:var(--surface2); border:1px solid var(--line); cursor:pointer; color:var(--text-dim); font-family:'Space Grotesk',sans-serif;}
+.chip:hover{border-color:var(--blue); color:var(--text);}
+
+.search-result{margin-top:16px; padding:14px; border-radius:8px; background:var(--surface2); border:1px solid var(--line);}
+.search-result .headline{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; margin-bottom:8px;}
+.room-pill{display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--green); color:var(--green); border-radius:20px; padding:5px 12px; font-size:13px; margin:3px 4px 3px 0; font-family:'Space Grotesk',sans-serif;}
+.room-pill.alt{border-color:var(--amber); color:var(--amber);}
+
+/* grid controls */
+.grid-controls{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+.grid-controls > div{flex:1; min-width:140px;}
+
+.floor-block{margin-bottom:18px;}
+.floor-title{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:.03em;}
+.rooms{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px;}
+.room-card{border-radius:8px; padding:12px; border:1px solid var(--line); border-left:4px solid var(--line);}
+.room-card.free{border-left-color:var(--green); background:rgba(73,192,138,.06);}
+.room-card.busy{border-left-color:var(--red); background:rgba(229,85,95,.06);}
+.room-card .rname{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px;}
+.room-card .rtag{font-size:11px; color:var(--text-dim); margin-top:2px;}
+.room-card .rstatus{font-size:12px; margin-top:8px; font-weight:600;}
+.room-card.free .rstatus{color:var(--green);}
+.room-card.busy .rstatus{color:var(--red);}
+
+/* room setup */
+.room-setup{background:var(--surface2); border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:10px;}
+.room-setup-top{display:flex; gap:8px; margin-bottom:8px;}
+.room-setup-top input[type=text]{flex:2;}
+.room-setup-top input[type=number]{flex:1;}
+.ac-toggle{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-dim); white-space:nowrap; padding:0 6px;}
+.booking-row{display:flex; gap:6px; margin-bottom:6px; align-items:center;}
+.booking-row select, .booking-row input{padding:6px 8px; font-size:12.5px;}
+.remove-x{background:transparent; border:none; color:var(--red); cursor:pointer; font-size:16px; padding:0 6px;}
+.add-booking{font-size:12px; padding:6px 10px;}
+.empty{color:var(--text-dim); font-size:14px; padding:24px 10px; text-align:center; border:1px dashed var(--line); border-radius:var(--radius);}
+footer{margin-top:30px; font-size:12px; color:var(--text-dim); text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">SMART-SEARCH FLOOR MANAGER</div>
+    <h1>Find an empty room in one sentence.</h1>
+    <div class="sub">Set up your rooms and their weekly occupancy once, then either browse the live floor grid or just describe what you need — "an AC room on the ground floor for 2 hours" — and let the search bar find it.</div>
+  </header>
+
+  <div class="panel">
+    <h2>🔍 AI Room Finder</h2>
+    <div class="hint">Type naturally. The parser reads AC/non-AC, floor, and duration or time from your sentence.</div>
+    <div class="search-row">
+      <input type="text" id="queryInput" placeholder='e.g. "I need an AC room on the ground floor for the next 2 hours"'>
+      <button class="btn-primary" id="searchBtn">Find</button>
+    </div>
+    <div class="chips">
+      <div class="chip" data-q="AC room on the ground floor for 2 hours">AC · Ground floor · 2 hrs</div>
+      <div class="chip" data-q="Any non-AC room after 3pm for 1 hour">Non-AC · after 3pm · 1 hr</div>
+      <div class="chip" data-q="Room on the 2nd floor right now">2nd floor · now</div>
+    </div>
+    <div id="searchResult"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🗺️ Floor Grid</h2>
+    <div class="hint">Browse occupancy directly, grouped floor-by-floor.</div>
+    <div class="grid-controls">
+      <div><label>Date</label><input type="date" id="gridDate"></div>
+      <div><label>Time</label><input type="time" id="gridTime"></div>
+      <div style="display:flex; align-items:flex-end;"><button id="nowBtn" style="width:100%;">Use current time</button></div>
+    </div>
+    <div id="floorGrid"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🏢 Rooms &amp; weekly timetable</h2>
+    <div class="hint">Add each room's floor, AC status, and when it's occupied (from the section timetables) — Mon to Sat.</div>
+    <div id="roomList"></div>
+    <button class="btn-primary" id="addRoomBtn" style="width:100%; margin-top:4px;">+ Add room</button>
+  </div>
+
+  <footer>All calculations run in your browser. Nothing is uploaded anywhere.</footer>
+</div>
+
+<script>
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAY_CODES = [1,2,3,4,5,6];
+function uid(){ return 'id'+Math.random().toString(36).slice(2,9); }
+function toMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+function toHHMM(min){ const h=Math.floor(min/60)%24, m=min%60; return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
+function fmt12(min){ const h=Math.floor(min/60)%24, m=min%60; const ap=h>=12?'PM':'AM'; const h12=((h+11)%12)+1; return h12+(m?':'+String(m).padStart(2,'0'):'')+ap; }
+
+function defaultState(){
+  return {
+    rooms: [
+      { id:uid(), name:'Room 101', floor:0, floorLabel:'Ground Floor', ac:true,
+        bookings:[{id:uid(),day:1,start:'09:00',end:'10:40',label:'II-BME'},{id:uid(),day:3,start:'09:00',end:'10:40',label:'II-BME'}] },
+      { id:uid(), name:'Room 102', floor:0, floorLabel:'Ground Floor', ac:false,
+        bookings:[{id:uid(),day:2,start:'10:50',end:'12:30',label:'III-ECE A'}] },
+      { id:uid(), name:'Room 201', floor:1, floorLabel:'1st Floor', ac:true,
+        bookings:[{id:uid(),day:1,start:'13:20',end:'15:00',label:'IV-ECE B'}] },
+      { id:uid(), name:'Room 202', floor:1, floorLabel:'1st Floor', ac:false, bookings:[] }
+    ]
+  };
+}
+function load(){
+  try{ const raw = localStorage.getItem('floor-manager-state'); if(raw){ const p=JSON.parse(raw); if(p && p.rooms) return p; } }catch(e){}
+  return defaultState();
+}
+function save(){ try{ localStorage.setItem('floor-manager-state', JSON.stringify(state)); }catch(e){} }
+
+let state = load();
+
+// ---------- room setup ----------
+const roomList = document.getElementById('roomList');
+function renderRooms(){
+  roomList.innerHTML = '';
+  if(!state.rooms.length){ roomList.innerHTML = '<div class="empty">No rooms yet. Add one to get started.</div>'; return; }
+  state.rooms.forEach(room=>{
+    const el = document.createElement('div');
+    el.className = 'room-setup';
+    el.innerHTML = `
+      <div class="room-setup-top">
+        <input type="text" value="${room.name.replace(/"/g,'&quot;')}" data-role="name" placeholder="Room name">
+        <input type="text" value="${room.floorLabel.replace(/"/g,'&quot;')}" data-role="floorLabel" placeholder="Floor label (e.g. Ground Floor)">
+        <input type="number" value="${room.floor}" data-role="floor" placeholder="Floor #" title="Floor number, 0=ground">
+        <label class="ac-toggle"><input type="checkbox" data-role="ac" ${room.ac?'checked':''}> AC</label>
+        <button class="btn-danger" data-role="removeRoom">✕</button>
+      </div>
+      <div class="bookings"></div>
+      <button class="add-booking" data-role="addBooking">+ Add occupied slot</button>
+    `;
+    const bookingsWrap = el.querySelector('.bookings');
+    room.bookings.forEach(b=>{
+      const row = document.createElement('div');
+      row.className = 'booking-row';
+      row.innerHTML = `
+        <select data-role="day">${DAY_CODES.map(c=>`<option value="${c}" ${b.day===c?'selected':''}>${DAY_NAMES[c]}</option>`).join('')}</select>
+        <input type="time" value="${b.start}" data-role="start">
+        <input type="time" value="${b.end}" data-role="end">
+        <input type="text" value="${b.label.replace(/"/g,'&quot;')}" data-role="label" placeholder="Section / subject" style="flex:1;">
+        <button class="remove-x" data-role="removeBooking">✕</button>
+      `;
+      row.querySelector('[data-role=day]').addEventListener('change', e=>{ b.day=Number(e.target.value); save(); renderGrid(); });
+      row.querySelector('[data-role=start]').addEventListener('change', e=>{ b.start=e.target.value; save(); renderGrid(); });
+      row.querySelector('[data-role=end]').addEventListener('change', e=>{ b.end=e.target.value; save(); renderGrid(); });
+      row.querySelector('[data-role=label]').addEventListener('input', e=>{ b.label=e.target.value; save(); });
+      row.querySelector('[data-role=removeBooking]').addEventListener('click', ()=>{
+        room.bookings = room.bookings.filter(x=>x.id!==b.id); save(); renderRooms(); renderGrid();
+      });
+      bookingsWrap.appendChild(row);
+    });
+    el.querySelector('[data-role=name]').addEventListener('input', e=>{ room.name=e.target.value; save(); renderGrid(); });
+    el.querySelector('[data-role=floorLabel]').addEventListener('input', e=>{ room.floorLabel=e.target.value; save(); renderGrid(); });
+    el.querySelector('[data-role=floor]').addEventListener('input', e=>{ room.floor=parseInt(e.target.value,10)||0; save(); renderGrid(); });
+    el.querySelector('[data-role=ac]').addEventListener('change', e=>{ room.ac=e.target.checked; save(); renderGrid(); });
+    el.querySelector('[data-role=removeRoom]').addEventListener('click', ()=>{
+      state.rooms = state.rooms.filter(r=>r.id!==room.id); save(); renderRooms(); renderGrid();
+    });
+    el.querySelector('[data-role=addBooking]').addEventListener('click', ()=>{
+      room.bookings.push({id:uid(),day:1,start:'09:00',end:'10:00',label:''});
+      save(); renderRooms(); renderGrid();
+    });
+    roomList.appendChild(el);
+  });
+}
+document.getElementById('addRoomBtn').addEventListener('click', ()=>{
+  state.rooms.push({ id:uid(), name:'New Room', floor:0, floorLabel:'Ground Floor', ac:false, bookings:[] });
+  save(); renderRooms(); renderGrid();
+});
+
+// ---------- floor grid ----------
+const gridDate = document.getElementById('gridDate');
+const gridTime = document.getElementById('gridTime');
+const floorGrid = document.getElementById('floorGrid');
+
+function nowDefaults(){
+  const n = new Date();
+  gridDate.value = n.toISOString().slice(0,10);
+  gridTime.value = String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+}
+nowDefaults();
+document.getElementById('nowBtn').addEventListener('click', ()=>{ nowDefaults(); renderGrid(); });
+gridDate.addEventListener('change', renderGrid);
+gridTime.addEventListener('change', renderGrid);
+
+function isRoomFreeAt(room, dayCode, minute){
+  const conflict = room.bookings.find(b => b.day===dayCode && minute >= toMin(b.start) && minute < toMin(b.end));
+  return { free: !conflict, conflict };
+}
+
+function renderGrid(){
+  const d = new Date(gridDate.value + 'T00:00:00');
+  const dayCode = d.getDay();
+  const minute = toMin(gridTime.value || '00:00');
+
+  const byFloor = {};
+  state.rooms.forEach(r=>{
+    const key = r.floor;
+    if(!byFloor[key]) byFloor[key] = { label:r.floorLabel, rooms:[] };
+    byFloor[key].rooms.push(r);
+  });
+
+  floorGrid.innerHTML = '';
+  if(!state.rooms.length){ floorGrid.innerHTML = '<div class="empty">Add rooms below to see the grid.</div>'; return; }
+
+  Object.keys(byFloor).sort((a,b)=>a-b).forEach(key=>{
+    const block = document.createElement('div');
+    block.className = 'floor-block';
+    const title = document.createElement('div');
+    title.className = 'floor-title';
+    title.textContent = byFloor[key].label;
+    block.appendChild(title);
+    const roomsWrap = document.createElement('div');
+    roomsWrap.className = 'rooms';
+    byFloor[key].rooms.forEach(r=>{
+      const {free, conflict} = isRoomFreeAt(r, dayCode, minute);
+      const card = document.createElement('div');
+      card.className = 'room-card ' + (free?'free':'busy');
+      card.innerHTML = `
+        <div class="rname">${r.name}</div>
+        <div class="rtag">${r.ac?'AC':'Non-AC'}</div>
+        <div class="rstatus">${free ? '● Free' : '● Occupied — '+(conflict.label||'class')}</div>
+      `;
+      roomsWrap.appendChild(card);
+    });
+    block.appendChild(roomsWrap);
+    floorGrid.appendChild(block);
+  });
+}
+
+// ---------- AI-style query parser ----------
+function parseQuery(text){
+  const t = text.toLowerCase();
+  let ac = null;
+  if(/non[\s-]?ac/.test(t)) ac = false;
+  else if(/\bac\b/.test(t)) ac = true;
+
+  let floor = null;
+  if(/ground floor/.test(t)) floor = 0;
+  else {
+    const m = t.match(/(\d+)(st|nd|rd|th)?\s*floor|floor\s*(\d+)/);
+    if(m) floor = parseInt(m[1]||m[3],10);
+    else if(/first floor/.test(t)) floor = 1;
+    else if(/second floor/.test(t)) floor = 2;
+    else if(/third floor/.test(t)) floor = 3;
+  }
+
+  let durationMin = 60;
+  const hourMatch = t.match(/(\d+)\s*hour/);
+  const minMatch = t.match(/(\d+)\s*min/);
+  if(hourMatch) durationMin = parseInt(hourMatch[1],10)*60;
+  else if(minMatch) durationMin = parseInt(minMatch[1],10);
+
+  let startMin = null;
+  const timeMatch = t.match(/(after|at|from)\s*(\d{1,2})(:(\d{2}))?\s*(am|pm)?/);
+  if(timeMatch){
+    let h = parseInt(timeMatch[2],10);
+    const mm = timeMatch[4] ? parseInt(timeMatch[4],10) : 0;
+    const ap = timeMatch[5];
+    if(ap === 'pm' && h < 12) h += 12;
+    if(ap === 'am' && h === 12) h = 0;
+    startMin = h*60+mm;
+  }
+
+  return { ac, floor, durationMin, startMin };
+}
+
+function findMatches(parsed, dayCode, baseMinute){
+  const startMin = parsed.startMin !== null ? parsed.startMin : baseMinute;
+  const endMin = startMin + parsed.durationMin;
+  const exact = [];
+  const relaxed = [];
+  state.rooms.forEach(r=>{
+    const acOk = parsed.ac === null || r.ac === parsed.ac;
+    const floorOk = parsed.floor === null || r.floor === parsed.floor;
+    const overlap = r.bookings.some(b => b.day===dayCode && startMin < toMin(b.end) && endMin > toMin(b.start));
+    if(!overlap){
+      if(acOk && floorOk) exact.push(r);
+      else relaxed.push(r);
+    }
+  });
+  return { startMin, endMin, exact, relaxed };
+}
+
+function runSearch(text){
+  const box = document.getElementById('searchResult');
+  if(!text.trim()){ box.innerHTML=''; return; }
+  const parsed = parseQuery(text);
+  const d = new Date(gridDate.value + 'T00:00:00');
+  const dayCode = d.getDay();
+  const baseMinute = toMin(gridTime.value || '00:00');
+  const { startMin, endMin, exact, relaxed } = findMatches(parsed, dayCode, baseMinute);
+
+  const filterDesc = [
+    parsed.ac === true ? 'AC' : parsed.ac === false ? 'Non-AC' : null,
+    parsed.floor !== null ? (parsed.floor===0?'Ground Floor':'Floor '+parsed.floor) : null,
+  ].filter(Boolean).join(' · ') || 'Any room';
+
+  let html = `<div class="search-result"><div class="headline">Looking for: ${filterDesc} · ${fmt12(startMin)}–${fmt12(endMin)}</div>`;
+  if(exact.length){
+    html += exact.map(r=>`<span class="room-pill">✓ ${r.name} (${r.floorLabel}, ${r.ac?'AC':'Non-AC'})</span>`).join('');
+  } else if(relaxed.length){
+    html += `<div style="color:var(--text-dim); font-size:13px; margin-bottom:6px;">No exact match — closest free alternatives:</div>`;
+    html += relaxed.slice(0,5).map(r=>`<span class="room-pill alt">${r.name} (${r.floorLabel}, ${r.ac?'AC':'Non-AC'})</span>`).join('');
+  } else {
+    html += `<div style="color:var(--red); font-size:13px;">No rooms are free in that window. Try a different time or duration.</div>`;
+  }
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+document.getElementById('searchBtn').addEventListener('click', ()=> runSearch(document.getElementById('queryInput').value));
+document.getElementById('queryInput').addEventListener('keydown', e=>{ if(e.key==='Enter') runSearch(e.target.value); });
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click', ()=>{ document.getElementById('queryInput').value = c.dataset.q; runSearch(c.dataset.q); });
+});
+
+// init
+renderRooms();
+renderGrid();
+</script>
+</body>
+</html>
